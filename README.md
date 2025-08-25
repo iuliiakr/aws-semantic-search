@@ -9,15 +9,18 @@
 This project is a fully serverless, AI-driven semantic search application built on AWS. It allows users to perform natural language queries on the Bhagavad Gita, returning results based on contextual meaning, not just keywords. The architecture is designed for scalability, fault tolerance, and cost-efficiency by leveraging a decoupled, microservices-based design.
 
 ## Architecture Diagram
-
-```mermaid
+```mermaid 
+%%{init: {
+  "securityLevel": "loose",
+  "flowchart": { "htmlLabels": true, "curve": "basis" }
+}}%%
 graph TD
     %% =================================================================
     %% === Live Query Flow (Serverless API)                          ===
     %% =================================================================
-    subgraph "Live Query Flow (Serverless API)"
+    subgraph Live Query Flow (Serverless API)
         direction LR
-        
+
         %% --- Define Nodes ---
         User([<img src='https://i.imgur.com/s40QJj5.png' width='50' /><br/>User Browser])
         S3_Frontend["<img src='https://i.imgur.com/LdF5y3z.png' width='50' /><br/>Static Website<br/>(on Amazon S3)"]
@@ -36,9 +39,9 @@ graph TD
     %% =================================================================
     %% === Data Ingestion Flow (One-Time Process)                    ===
     %% =================================================================
-    subgraph "Data Ingestion Flow (One-Time Process)"
+    subgraph Data Ingestion Flow (One-Time Process)
         direction TD
-        
+
         %% --- Define Nodes ---
         Developer([<img src='https://i.imgur.com/6U4t9H5.png' width='50' /><br/>Developer/CI-CD])
         IngestionScript["<img src='https://i.imgur.com/z4AnSwh.png' width='50' /><br/>ingestion.py"]
