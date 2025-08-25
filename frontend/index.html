@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Scripture Search & Browser</title>
+    <style>
+        body { font-family: sans-serif; max-width: 900px; margin: 2rem auto; padding: 0 1rem; background-color: #f8f9fa; color: #343a40; }
+        .container { background: white; padding: 2rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+        h1, h2 { color: #0056b3; text-align: center; }
+        .form-section { margin-bottom: 2rem; padding-bottom: 2rem; border-bottom: 1px solid #dee2e6; }
+        .form-group { display: flex; gap: 1rem; margin-bottom: 1rem; }
+        .form-group label { font-weight: bold; width: 100px; padding-top: 0.5rem; }
+        .form-group select, .form-group input { flex-grow: 1; padding: 0.5rem; font-size: 1rem; border: 1px solid #ced4da; border-radius: 4px; }
+        button { display: block; width: 100%; padding: 0.75rem; font-size: 1.1rem; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; transition: background-color 0.3s; }
+        button:hover { background-color: #0056b3; }
+        #loading-indicator { text-align: center; font-style: italic; display: none; margin: 1rem 0; }
+        #results-container { margin-top: 2rem; }
+        .result-item { border: 1px solid #e9ecef; border-radius: 4px; padding: 1.5rem; margin-bottom: 1rem; background: #fff; }
+        .result-item .reference { font-weight: bold; color: #0056b3; font-size: 1.2rem; }
+        .result-item .sanskrit { font-style: italic; color: #6c757d; }
+        .result-item .translation { margin-top: 1rem; }
+        .result-item .translator { font-size: 0.8rem; text-transform: uppercase; color: #adb5bd; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Bhagavad Gita Explorer</h1>
+
+        <!-- Feature 1: Verse Browser -->
+        <div class="form-section">
+            <h2>Browse by Verse</h2>
+            <form id="verse-form">
+                <div class="form-group">
+                    <label for="chapter-select">Chapter:</label>
+                    <select id="chapter-select"></select>
+                </div>
+                <div class="form-group">
+                    <label for="verse-select">Verse:</label>
+                    <select id="verse-select"></select>
+                </div>
+                <button type="submit">Get Verse</button>
+            </form>
+        </div>
+
+        <!-- Feature 3: Keyword Search -->
+        <div class="form-section">
+            <h2>Search by Keyword</h2>
+            <form id="search-form">
+                <div class="form-group">
+                    <label for="search-input">Query:</label>
+                    <input type="text" id="search-input" placeholder="e.g., dharma, yoga, brahma" required>
+                </div>
+                <button type="submit">Search</button>
+            </form>
+        </div>
+
+        <div id="loading-indicator">Loading...</div>
+        <div id="results-container"></div>
+    </div>
+
+    <script>
+        // === CONFIGURATION ===
+        // IMPORTANT: Replace these with your actual API Gateway Invoke URLs
+        const searchApiUrl = 'your-search-api-gateway-invoke-url';
+        const verseApiUrl = 'your-verse-api-gateway-invoke-url';
+        const gitaStructure = { 1: 47, 2: 72, 3: 43, 4: 42, 5: 29, 6: 47, 7: 30, 8: 28, 9: 34, 10: 42, 11: 55, 12: 20, 13: 34, 14: 27, 15: 20, 16: 24, 17: 28, 18: 78 };
+
+        // === GET HTML ELEMENTS ===
+        const chapterSelect = document.getElementById('chapter-select');
+        const verseSelect = document.getElementById('verse-select');
+        const verseForm = document.getElementById('verse-form');
+        const searchForm = document.getElementById('search-form');
+        const searchInput = document.getElementById('search-input');
+        const resultsContainer = document.getElementById('results-container');
+        const loadingIndicator = document.getElementById('loading-indicator');
+
+        // === INITIALIZE UI ===
+        function populateChapters() {
+            for (const chapter in gitaStructure) {
+                const option = document.createElement('option');
+                option.value = chapter;
+                option.textContent = `Chapter ${chapter}`;
+                chapterSelect.appendChild(option);
+            }
+        }
+
+        function updateVerses() {
+            const chapter = chapterSelect.value;
+            const verseCount = gitaStructure[chapter];
+            verseSelect.innerHTML = '';
+            for (let i = 1; i <= verseCount; i++) {
+                const option = document.createElement('option');
+                option.value = i;
+                option.textContent = `Verse ${i}`;
+                verseSelect.appendChild(option);
+            }
+        }
+        
+        populateChapters();
+        updateVerses();
+        chapterSelect.addEventListener('change', updateVerses);
+
+        // === EVENT LISTENERS ===
+        verseForm.addEventListener('submit', handleGetVerse);
+        searchForm.addEventListener('submit', handleSearch);
+
+        // === HANDLER FUNCTIONS ===
+        async function handleGetVerse(event) {
+            event.preventDefault();
+            const chapter = chapterSelect.value;
+            const verse = verseSelect.value;
+            const verseId = `BG_${chapter}_${verse}`;
+            
+            setLoading(true);
+            try {
+                const data = await fetchVerseById(verseId);
+                displaySingleVerse(data);
+            } catch (error) {
+                handleError(error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function handleSearch(event) {
+            event.preventDefault();
+            const query = searchInput.value.trim();
+            if (!query) return;
+            
+            setLoading(true);
+            try {
+                const data = await fetchSearchResults(query);
+                displaySearchResults(data);
+            } catch (error) {
+                handleError(error);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // === API FETCH FUNCTIONS ===
+        async function fetchVerseById(verseId) {
+            const response = await fetch(`${verseApiUrl}/${verseId}`);
+            if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            return response.json();
+        }
+
+        async function fetchSearchResults(query) {
+            const fullUrl = `${searchApiUrl}?q=${encodeURIComponent(query)}`;
+            const response = await fetch(fullUrl);
+            if (!response.ok) throw new Error(`API Error: ${response.status}`);
+            return response.json();
+        }
+
+        // === DISPLAY FUNCTIONS ===
+        function displaySingleVerse(data) {
+            let html = '';
+            if (data && data.canonical) {
+                const translationsHtml = data.translations.map(t => `
+                    <div class="translation">
+                        <p>${t.text}</p>
+                        <p class="translator">Translation by ${t.translator}</p>
+                    </div>
+                `).join('');
+
+                html = `
+                    <div class="result-item">
+                        <p class="reference">Bhagavad Gita ${data.id.split('_')[1]}:${data.id.split('_')[2]}</p>
+                        <p class="sanskrit">${data.canonical.sanskritTransliteration}</p>
+                        ${translationsHtml}
+                    </div>
+                `;
+            } else {
+                html = '<p>Verse not found.</p>';
+            }
+            resultsContainer.innerHTML = html;
+        }
+
+        function displaySearchResults(results) {
+            if (!results || results.length === 0) {
+                resultsContainer.innerHTML = '<p>No results found.</p>';
+                return;
+            }
+            const resultsHtml = results.map(item => `
+                <div class="result-item">
+                    <p class="reference">${item.textId} ${item.chapter}:${item.verse}</p>
+                    <p>${item.translation_en}</p>
+                    <p class="sanskrit">${item.sanskritTransliteration}</p>
+                </div>
+            `).join('');
+            resultsContainer.innerHTML = resultsHtml;
+        }
+        
+        // === UTILITY FUNCTIONS ===
+        function setLoading(isLoading) {
+            loadingIndicator.style.display = isLoading ? 'block' : 'none';
+            if (isLoading) resultsContainer.innerHTML = '';
+        }
+
+        function handleError(error) {
+            console.error("Failed to fetch data:", error);
+            resultsContainer.innerHTML = `<p style="color: red;">Failed to load results.</p>`;
+        }
+    </script>
+
+</body>
+</html>
