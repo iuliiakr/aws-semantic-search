@@ -10,6 +10,8 @@ This project is a fully serverless, AI-driven semantic search application built 
 
 ## Architecture Diagram
 
+![Diagram](architecture.png)
+
 ## Key Features
 
 -   **Semantic Search:** Utilizes a Hugging Face sentence-transformer model on Amazon SageMaker to convert text into 384-dimension vector embeddings, enabling context-aware search.
