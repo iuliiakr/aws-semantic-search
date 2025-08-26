@@ -10,7 +10,7 @@ This project is a fully serverless, AI-driven semantic search application built 
 
 ## Architecture Diagram
 
-![Diagram](architecture.png)
+![Diagram](architecture-diagram.png)
 
 ## Key Features
 
